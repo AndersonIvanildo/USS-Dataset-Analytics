@@ -118,7 +118,8 @@ def test_dataset_summary_and_coverage_use_expected_units() -> None:
 
     sgd_coverage = coverage[coverage["dataset"] == "SGD"].iloc[0]
     assert sgd_coverage["overall"] == 1
-    assert sgd_coverage["uma_nota"] == 1
+    assert sgd_coverage["falas_reais"] == 2
+    assert sgd_coverage["unknown_falas_reais"] == 0
 
 
 def test_loaded_dataset_counts_match_current_corpus() -> None:
@@ -130,3 +131,13 @@ def test_loaded_dataset_counts_match_current_corpus() -> None:
     assert summary.loc["ReDial", "dialogos"] == 1000
     assert summary.loc["CCPE", "dialogos"] == 500
     assert summary.loc["ReDial", "unknown"] == summary.loc["ReDial", "falas_usuario"]
+
+
+def test_coverage_unknown_counts_real_user_turns_only() -> None:
+    df = ensure_annotation_columns(load_normalized_dataset())
+    coverage = coverage_summary(df).set_index("dataset")
+
+    assert coverage.loc["SGD", "unknown_falas_reais"] == 0
+    assert coverage.loc["ReDial", "unknown_falas_reais"] == coverage.loc[
+        "ReDial", "falas_reais"
+    ]

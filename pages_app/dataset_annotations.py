@@ -80,11 +80,15 @@ def render(df: pd.DataFrame) -> None:
         dataset = st.selectbox("Dataset", datasets, index=default_index)
     with control_right:
         limit = st.slider(
-            "Top anotações",
+            "Quantidade de anotações nos gráficos",
             min_value=5,
             max_value=30,
             value=15,
             step=1,
+            help=(
+                "Limita quantas categorias aparecem nas barras e no mapa de calor. "
+                "Não altera os dados originais."
+            ),
         )
 
     include_unknown = st.checkbox(
@@ -118,8 +122,8 @@ def render(df: pd.DataFrame) -> None:
     actions = sorted(chart_data["action_raw"].dropna().unique())
     narrative = annotation_narrative(dataset)
     st.markdown(f"#### {narrative.title}")
-    st.markdown(narrative.body)
-    st.markdown(narrative.examples_intro)
+    st.success(narrative.body)
+    st.warning(narrative.examples_intro)
 
     frequencies_all = annotation_frequencies(
         dataset_df,
@@ -127,12 +131,10 @@ def render(df: pd.DataFrame) -> None:
     )
 
     st.markdown("#### Investigar uma anotação específica")
-    st.markdown(
-        """
-        Use a busca para aproximar a explicação de um código concreto. A explicação
-        abaixo fala sobre o que a anotação representa dentro do dataset selecionado; os
-        exemplos no fim da página mostram como ela aparece em falas reais.
-        """
+    st.info(
+        "A busca abaixo serve para aproximar a explicação de um código concreto. "
+        "Ela não troca o significado original do dataset; só traz a anotação para perto "
+        "dos exemplos e dos gráficos."
     )
     query = st.text_input(
         "Buscar anotação",

@@ -198,27 +198,30 @@ def agreement_summary(df: pd.DataFrame, include_overall: bool = True) -> pd.Data
 
 def coverage_summary(df: pd.DataFrame) -> pd.DataFrame:
     """Resume cobertura das anotações por dataset."""
-    user_rows = df[df["role"] == "USER"].copy()
-    if user_rows.empty:
+    user_turns = real_user_turns(df)
+    overall = overall_rows(df)
+    if user_turns.empty:
         return pd.DataFrame()
 
-    return (
-        user_rows.groupby("dataset")
+    coverage = (
+        user_turns.groupby("dataset")
         .agg(
-            registros_user=("role", "size"),
-            falas_reais=("is_overall", lambda values: int((~values).sum())),
-            overall=("is_overall", "sum"),
-            sem_nota=("satisfaction_annotation_count", lambda values: int((values == 0).sum())),
-            uma_nota=("satisfaction_annotation_count", lambda values: int((values == 1).sum())),
+            falas_reais=("role", "size"),
             tres_ou_mais_notas=(
                 "satisfaction_annotation_count",
                 lambda values: int((values >= 3).sum()),
             ),
-            unknown=("action_raw", lambda values: int((values == "UNKNOWN").sum())),
+            unknown_falas_reais=(
+                "action_raw",
+                lambda values: int((values == "UNKNOWN").sum()),
+            ),
         )
         .reset_index()
-        .sort_values("dataset")
     )
+    overall_counts = overall.groupby("dataset").size().rename("overall")
+    coverage = coverage.join(overall_counts, on="dataset").fillna({"overall": 0})
+    coverage["overall"] = coverage["overall"].astype(int)
+    return coverage.sort_values("dataset").reset_index(drop=True)
 
 
 def annotation_frequencies(

@@ -77,13 +77,10 @@ def _render_coverage_table(df: pd.DataFrame) -> None:
     coverage = coverage.rename(
         columns={
             "dataset": "Dataset",
-            "registros_user": "Registros USER",
-            "falas_reais": "Falas reais",
+            "falas_reais": "Falas reais de usuário",
             "overall": "OVERALL",
-            "sem_nota": "Sem nota",
-            "uma_nota": "Uma nota",
             "tres_ou_mais_notas": "Três ou mais notas",
-            "unknown": "UNKNOWN",
+            "unknown_falas_reais": "UNKNOWN em falas reais",
         }
     )
     st.dataframe(coverage, width="stretch", hide_index=True)
@@ -219,9 +216,10 @@ def render(df: pd.DataFrame) -> None:
     st.markdown("#### Como está a cobertura dos dados?")
     st.markdown(
         """
-        A tabela abaixo mostra sinais de cobertura: registros sem nota, registros com uma
-        nota, registros com três ou mais notas e presença de `UNKNOWN`. Esses números
-        ajudam a separar lacunas de anotação de categorias semânticas reais.
+        A tabela abaixo mostra quantas falas reais de usuário existem, quantas avaliações
+        gerais `OVERALL` fecham os diálogos e quantas falas têm três ou mais notas de
+        anotadores. `UNKNOWN` é contado apenas nas falas reais, para não misturar a falta
+        de ação das linhas `OVERALL` com ausência de anotação nas mensagens do usuário.
         """
     )
     _render_coverage_table(df)
