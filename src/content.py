@@ -13,7 +13,6 @@ class DatasetGuide:
     domain: str
     description: str
     how_to_read: str
-    source_context: str = ""
 
 
 @dataclass(frozen=True)
@@ -53,10 +52,6 @@ DATASET_GUIDES = [
             "indica que a fala do usuário agradece ao sistema; a nota deve ser lida "
             "junto com o que aconteceu antes desse agradecimento."
         ),
-        source_context=(
-            "...o artigo descreve SGD como conversas entre uma pessoa e um assistente "
-            "virtual, cobrindo múltiplos domínios..."
-        ),
     ),
     DatasetGuide(
         name="MWOZ",
@@ -73,10 +68,6 @@ DATASET_GUIDES = [
             "antes do hífen indica o assunto da tarefa; a parte depois do hífen indica "
             "o tipo de movimento feito na fala."
         ),
-        source_context=(
-            "...o artigo identifica MultiWOZ 2.1 como um dos datasets usados na "
-            "construção do USS, ao lado de JDDC, SGD, ReDial e CCPE..."
-        ),
     ),
     DatasetGuide(
         name="ReDial",
@@ -91,10 +82,6 @@ DATASET_GUIDES = [
         how_to_read=(
             "`UNKNOWN` no ReDial não deve ser interpretado como uma intenção do usuário. "
             "Ele marca a ausência de ação no arquivo principal carregado para análise."
-        ),
-        source_context=(
-            "...o artigo inclui ReDial entre os datasets de recomendação usados para "
-            "compor o USS..."
         ),
     ),
     DatasetGuide(
@@ -112,10 +99,6 @@ DATASET_GUIDES = [
             "alvo `MOVIE_OR_SERIES`. O sinal de mais separa a função da marcação e a "
             "entidade à qual ela se refere."
         ),
-        source_context=(
-            "...o artigo descreve CCPE como parte do conjunto de diálogos de filmes e "
-            "preferências usado no USS..."
-        ),
     ),
     DatasetGuide(
         name="JDDC",
@@ -131,10 +114,6 @@ DATASET_GUIDES = [
         how_to_read=(
             "O JDDC permanece como contexto de origem do USS. As análises visuais se "
             "concentram em SGD, MWOZ, ReDial e CCPE para manter comparação em inglês."
-        ),
-        source_context=(
-            "...a preparação do USS começa com JDDC, um corpus chinês de atendimento "
-            "em comércio eletrônico com grande volume de diálogos..."
         ),
     ),
 ]
@@ -165,28 +144,12 @@ COLUMN_GUIDE = [
 
 ARTICLE_NOTES = [
     ArticleNote(
-        title="Por que satisfação precisa do diálogo inteiro",
+        title="Por que o USS junta datasets diferentes",
         translated=(
-            "A motivação do USS nasce da limitação de avaliar apenas respostas isoladas. "
-            "Uma interação pode parecer correta em um turno e ainda assim produzir uma "
-            "experiência ruim quando a conversa completa é considerada."
+            "O USS não nasce como uma coleta única. Ele combina bases já existentes para "
+            "reunir domínios diferentes e observar satisfação em vários tipos de tarefa."
         ),
-        source_context=(
-            "...o artigo contrasta avaliação offline por turno com a necessidade de "
-            "entender utilidade geral e satisfação ao longo do fluxo do diálogo..."
-        ),
-    ),
-    ArticleNote(
-        title="Como o USS foi construído",
-        translated=(
-            "O USS combina datasets já existentes e adiciona anotações humanas de "
-            "satisfação. A composição mistura comércio eletrônico, reservas, assistentes "
-            "virtuais e recomendação de filmes."
-        ),
-        source_context=(
-            "...a seção de preparação lista JDDC, SGD, MultiWOZ 2.1, ReDial e CCPE como "
-            "as cinco bases usadas para formar a coleção..."
-        ),
+        source_context="five benchmark task-oriented dialogue datasets",
     ),
     ArticleNote(
         title="O momento da anotação",
@@ -195,22 +158,7 @@ ARTICLE_NOTES = [
             "representa uma leitura do contexto anterior, não uma análise de sentimento "
             "da frase que aparece na mesma linha."
         ),
-        source_context=(
-            "...a descrição da coleta diz que os anotadores viam o contexto do diálogo e "
-            "avaliavam a satisfação antes do próximo enunciado do usuário..."
-        ),
-    ),
-    ArticleNote(
-        title="A escala de 1 a 5",
-        translated=(
-            "A escala vai de muito insatisfeito a muito satisfeito. As notas extremas "
-            "dependem de entender se o sistema compreendeu a necessidade do usuário e se "
-            "a resposta anterior ajudou a resolver a tarefa."
-        ),
-        source_context=(
-            "...a tabela de avaliação define cinco níveis, indo de falha em entender o "
-            "pedido até resolução completa e eficiente..."
-        ),
+        source_context="before the user’s sentence",
     ),
     ArticleNote(
         title="A linha OVERALL",
@@ -218,10 +166,7 @@ ARTICLE_NOTES = [
             "`OVERALL` representa satisfação no nível do diálogo completo. Ela deve ser "
             "separada das falas reais de usuário, porque muda a unidade de análise."
         ),
-        source_context=(
-            "...nos detalhes experimentais, os autores tratam a satisfação do diálogo "
-            "como o último enunciado de usuário e usam `overall` como identificador..."
-        ),
+        source_context="dialogue-level satisfaction as the last user utterance",
     ),
     ArticleNote(
         title="O desbalanceamento das notas",
@@ -230,10 +175,7 @@ ARTICLE_NOTES = [
             "numéricos precisam mostrar denominadores e não devem transformar diferenças "
             "entre bases em ranking de qualidade."
         ),
-        source_context=(
-            "...o artigo relata desbalanceamento sério nos rótulos de satisfação e, nos "
-            "experimentos, compensa parcialmente as notas diferentes de 3..."
-        ),
+        source_context="serious imbalance of the satisfaction label",
     ),
 ]
 

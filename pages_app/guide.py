@@ -10,18 +10,13 @@ from src.loaders import ensure_annotation_columns
 
 
 def source_badge(source_context: str) -> str:
-    """Cria um ícone de ajuda com contexto do artigo."""
+    """Cria um ícone de ajuda com trecho literal do artigo."""
     context = escape(source_context)
     return (
         '<span class="source-help">?'
-        f'<span class="source-tooltip">{context}</span>'
+        f'<span class="source-tooltip">Trecho literal do artigo: “{context}”</span>'
         "</span>"
     )
-
-
-def text_with_source(text: str, source_context: str) -> str:
-    """Combina uma afirmação em português com contexto do artigo."""
-    return f"{escape(text)} {source_badge(source_context)}"
 
 
 def render_article_note(title: str, body: str, source_context: str) -> None:
@@ -78,9 +73,7 @@ def render_dataset_cards() -> None:
             with column:
                 with st.container(border=True):
                     st.markdown(
-                        f"#### {dataset_guide.name}: {dataset_guide.full_name} "
-                        f"{source_badge(dataset_guide.source_context)}",
-                        unsafe_allow_html=True,
+                        f"#### {dataset_guide.name}: {dataset_guide.full_name}"
                     )
                     st.caption(f"{dataset_guide.language} · {dataset_guide.domain}")
                     st.markdown(dataset_guide.description)
@@ -107,14 +100,10 @@ def render(df: pd.DataFrame) -> None:
         """
     )
     st.markdown(
-        text_with_source(
-            "O USS foi criado para aproximar a avaliação automática da experiência real "
-            "do usuário durante uma conversa.",
-            "...o artigo apresenta a simulação de satisfação como forma de ampliar a "
-            "avaliação de sistemas de diálogo e torná-la mais próxima de comportamento "
-            "humano...",
-        ),
-        unsafe_allow_html=True,
+        """
+        O USS foi criado para aproximar a avaliação automática da experiência real do
+        usuário durante uma conversa.
+        """
     )
 
     st.markdown("#### Por que esse dataset existe")
@@ -175,13 +164,10 @@ def render(df: pd.DataFrame) -> None:
         """
     )
     st.markdown(
-        text_with_source(
-            "A satisfação deve ser lida como uma avaliação contextual da experiência, "
-            "não como sentimento textual da frase.",
-            "...a coleta descrita no artigo coloca a avaliação antes da fala do usuário "
-            "e baseada no contexto entre usuário e sistema...",
-        ),
-        unsafe_allow_html=True,
+        """
+        A satisfação deve ser lida como uma avaliação contextual da experiência, não
+        como sentimento textual da frase.
+        """
     )
 
     st.markdown("#### Escala de satisfação")

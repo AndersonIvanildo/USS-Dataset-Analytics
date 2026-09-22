@@ -5,7 +5,6 @@ import streamlit as st
 
 from pages_app import (
     dataset_annotations,
-    dataset_comparison,
     dialogue_inspection,
     guide,
     overview,
@@ -181,11 +180,6 @@ def main() -> None:
             lambda: dataset_annotations.render(df),
             title="Anotações por dataset",
             url_path="anotacoes-dataset",
-        ),
-        st.Page(
-            lambda: dataset_comparison.render(df),
-            title="Comparação",
-            url_path="comparacao",
         ),
     ]
     navigation = st.navigation(
