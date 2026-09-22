@@ -1,0 +1,2 @@
+"""Páginas do aplicativo Streamlit."""
+

@@ -1,0 +1,6 @@
+[theme]
+base = "light"
+font = "Comfortaa:https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap"
+headingFont = "Comfortaa:https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap"
+baseFontSize = 16
+baseFontWeight = 400
