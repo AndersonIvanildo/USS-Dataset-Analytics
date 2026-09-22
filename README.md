@@ -1,8 +1,8 @@
 # Explorador USS em Streamlit
 
-Este projeto é uma interface em Streamlit para estudar o dataset **User Satisfaction Simulation**, também chamado de **USS**. O objetivo é explorar o dataset e suas anotações de satisfação, não reproduzir os modelos do artigo.
+Este projeto é uma interface em Streamlit para estudar o dataset **User Satisfaction Simulation**, também chamado de **USS**. O objetivo é explorar o dataset, suas anotações de satisfação e os padrões presentes nas conversas, sem reproduzir os modelos do artigo.
 
-O app permite visualizar os datasets em inglês, inspecionar diálogos completos, entender as colunas normalizadas, analisar distribuições de satisfação e preparar uma leitura inicial para projetos futuros de sentimentos ou bots.
+A ferramenta permite visualizar os datasets em inglês, inspecionar diálogos completos, entender as colunas normalizadas, analisar distribuições de satisfação, comparar anotações e verificar a concordância entre anotadores.
 
 ## Como executar
 
@@ -24,9 +24,9 @@ Os arquivos em `data/raw` vieram do repositório oficial do projeto USS:
 
 https://github.com/sunnweiwei/user-satisfaction-simulation/tree/master/dataset
 
-Eles são mantidos dentro deste projeto para evitar perda de reprodutibilidade caso os arquivos originais deixem de estar disponíveis no futuro. A fonte original continua referenciada aqui e dentro do app.
+Eles são mantidos dentro deste projeto para evitar perda de reprodutibilidade caso os arquivos originais deixem de estar disponíveis no futuro. A fonte original continua referenciada aqui e na própria análise.
 
-Arquivos principais usados no MVP:
+Arquivos principais usados na análise:
 
 - `SGD.txt`
 - `MWOZ.txt`
@@ -51,7 +51,7 @@ Repositório oficial:
 
 https://github.com/sunnweiwei/user-satisfaction-simulation
 
-## Estrutura do app
+## Estrutura da aplicação
 
 - `app.py`: interface Streamlit.
 - `src/loaders.py`: leitura e normalização dos datasets.
@@ -59,6 +59,9 @@ https://github.com/sunnweiwei/user-satisfaction-simulation
 - `src/charts.py`: gráficos Plotly.
 - `src/content.py`: textos explicativos exibidos no guia do app.
 - `src/downloads.py`: download automático dos arquivos oficiais.
+- `pages_app/overview.py`: panorama analítico, distribuição de notas, cobertura e concordância.
+- `pages_app/dataset_annotations.py`: glossário, exemplos e gráficos de anotações por dataset.
+- `pages_app/dialogue_inspection.py`: busca, paginação e inspeção de conversas completas.
 - `data/raw`: arquivos TXT originais do dataset.
 - `data/processed`: cache Parquet normalizado.
 

@@ -100,6 +100,15 @@ def _filter_table(df: pd.DataFrame) -> pd.DataFrame:
         selected_roles = st.multiselect("Papel", roles, default=roles)
 
     include_overall = st.checkbox("Incluir linhas OVERALL na tabela", value=True)
+    ratings = sorted(
+        int(value) for value in df["satisfaction_mode"].dropna().unique().tolist()
+    )
+    selected_ratings = st.multiselect(
+        "Nota mais frequente, deixe vazio para mostrar todas",
+        ratings,
+        format_func=lambda value: f"{value} · {RATING_LABELS[value]}",
+    )
+    include_without_rating = st.checkbox("Incluir registros sem nota", value=True)
     actions = sorted(df["action_raw"].dropna().unique())
     selected_actions = st.multiselect(
         "Anotação, deixe vazio para mostrar todas",
@@ -110,6 +119,13 @@ def _filter_table(df: pd.DataFrame) -> pd.DataFrame:
     table_df = table_df[table_df["role"].isin(selected_roles)]
     if not include_overall:
         table_df = table_df[~table_df["is_overall"]]
+    if selected_ratings:
+        rating_mask = table_df["satisfaction_mode"].isin(selected_ratings)
+        if include_without_rating:
+            rating_mask = rating_mask | table_df["satisfaction_mode"].isna()
+        table_df = table_df[rating_mask]
+    if not include_without_rating:
+        table_df = table_df[table_df["satisfaction_mode"].notna()]
     if selected_actions:
         table_df = table_df[table_df["action_raw"].isin(selected_actions)]
     if query:

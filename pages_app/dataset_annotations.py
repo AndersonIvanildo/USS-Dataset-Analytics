@@ -4,6 +4,8 @@ import pandas as pd
 import streamlit as st
 
 from src.charts import annotation_frequency_chart, annotation_rating_heatmap
+from src.config import RATING_LABELS
+from src.content import explain_annotation
 from src.loaders import ensure_annotation_columns
 from src.metrics import annotation_frequencies, real_user_turns
 
@@ -12,22 +14,65 @@ def _format_number(value: int) -> str:
     return f"{value:,}".replace(",", ".")
 
 
+def _glossary_table(dataset: str, actions: list[str]) -> pd.DataFrame:
+    rows = []
+    for action in actions:
+        guide = explain_annotation(dataset, action)
+        rows.append(
+            {
+                "Anotação": guide.code,
+                "Explicação": guide.meaning,
+                "Como ler": guide.how_to_read,
+                "Fonte": guide.source,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _examples_table(data: pd.DataFrame, annotation: str, rating: int | None) -> pd.DataFrame:
+    examples = data[data["action_raw"] == annotation].copy()
+    if rating is not None:
+        examples = examples[examples["satisfaction_mode"] == rating]
+
+    examples = examples.sort_values(["dialogue_id", "turn_id"]).head(12)
+    return examples[
+        [
+            "dataset",
+            "dialogue_id",
+            "turn_id",
+            "text",
+            "action_raw",
+            "satisfaction_scores",
+            "satisfaction_mode",
+        ]
+    ].rename(
+        columns={
+            "dataset": "Dataset",
+            "dialogue_id": "Diálogo",
+            "turn_id": "Posição",
+            "text": "Fala",
+            "action_raw": "Anotação",
+            "satisfaction_scores": "Notas",
+            "satisfaction_mode": "Nota mais frequente",
+        }
+    )
+
+
 def render(df: pd.DataFrame) -> None:
-    """Renderiza gráficos de anotações e notas dentro de cada dataset."""
+    """Renderiza gráficos, glossário e exemplos de anotações por dataset."""
     df = ensure_annotation_columns(df)
     st.subheader("Anotações por dataset")
     st.markdown(
         """
-        Esta página mostra como as anotações aparecem dentro de um dataset específico e
-        como as notas de satisfação se distribuem em cada anotação. A unidade de análise
-        é a fala real de usuário: linhas `OVERALL` e falas do sistema não entram nesses
-        gráficos.
+        Cada dataset preserva seu próprio vocabulário de anotação. Esta página mostra
+        frequência, decomposição, exemplos e relação com notas de satisfação para ajudar
+        a ler códigos simples e compostos sem perder a origem de cada base.
         """
     )
 
     user_turns = real_user_turns(df)
     if user_turns.empty:
-        st.warning("Não há falas reais de usuário no recorte atual.")
+        st.warning("Não há falas reais de usuário para analisar.")
         return
 
     datasets = sorted(user_turns["dataset"].unique())
@@ -35,12 +80,7 @@ def render(df: pd.DataFrame) -> None:
 
     control_left, control_right = st.columns([2, 1])
     with control_left:
-        dataset = st.selectbox(
-            "Dataset",
-            datasets,
-            index=default_index,
-            help="Os gráficos respeitam os filtros globais da barra lateral.",
-        )
+        dataset = st.selectbox("Dataset", datasets, index=default_index)
     with control_right:
         limit = st.slider(
             "Top anotações",
@@ -54,8 +94,8 @@ def render(df: pd.DataFrame) -> None:
         "Incluir UNKNOWN",
         value=True,
         help=(
-            "UNKNOWN representa ausência de anotação identificada no arquivo principal, "
-            "não uma categoria semântica comum a todos os datasets."
+            "UNKNOWN marca ausência de anotação identificada. Em especial no ReDial, "
+            "isso vem do arquivo principal carregado."
         ),
     )
 
@@ -73,21 +113,33 @@ def render(df: pd.DataFrame) -> None:
     unique_annotations = chart_data["action_raw"].nunique()
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Diálogos no recorte", _format_number(dataset_df["dialogue_id"].nunique()))
+    col1.metric("Diálogos", _format_number(dataset_df["dialogue_id"].nunique()))
     col2.metric("Falas analisadas", _format_number(len(chart_data)))
     col3.metric("Anotações distintas", _format_number(unique_annotations))
     col4.metric("Falas com nota", _format_number(int(scored_turns)))
 
+    st.markdown("#### Como ler os códigos deste dataset?")
     st.markdown(
         """
-        **Como ler.** Em SGD, códigos como `THANK_YOU` são atos de diálogo. Em MWOZ,
-        anotações como `Hotel-Inform` combinam domínio e ato. Em CCPE, códigos como
-        `ENTITY_OTHER+MOVIE_OR_SERIES` combinam tipo de marcação e entidade. No ReDial,
-        o arquivo principal do USS não traz ações, por isso é esperado encontrar
-        `UNKNOWN`.
+        O mesmo campo `action_raw` guarda formatos diferentes. Em SGD, o código costuma
+        ser um ato de diálogo. Em MWOZ, o hífen separa domínio e ato. Em CCPE, o sinal de
+        mais separa tipo de marcação e entidade. Em ReDial, `UNKNOWN` aparece porque o
+        arquivo principal não traz ações no mesmo padrão.
         """
     )
 
+    actions = sorted(chart_data["action_raw"].dropna().unique())
+    query = st.text_input(
+        "Buscar anotação no glossário",
+        placeholder="Ex.: THANK_YOU, Hotel-Inform, ENTITY_OTHER",
+    )
+    glossary_actions = [
+        action for action in actions if not query or query.lower() in action.lower()
+    ]
+    glossary_df = _glossary_table(dataset, glossary_actions)
+    st.dataframe(glossary_df, width="stretch", hide_index=True)
+
+    st.markdown("#### Quais anotações aparecem mais?")
     st.plotly_chart(
         annotation_frequency_chart(
             dataset_df,
@@ -99,10 +151,11 @@ def render(df: pd.DataFrame) -> None:
         key=f"annotation_frequency_{dataset}_{limit}_{include_unknown}",
     )
     st.caption(
-        "Unidade: falas reais de usuário. Denominador: falas do dataset selecionado no "
-        "recorte atual. Passe o mouse para ver contagem e percentual."
+        "Unidade: falas reais de usuário. O hover mostra contagem e percentual dentro "
+        "do dataset selecionado."
     )
 
+    st.markdown("#### Como as notas se distribuem dentro de cada anotação?")
     st.plotly_chart(
         annotation_rating_heatmap(
             dataset_df,
@@ -114,8 +167,8 @@ def render(df: pd.DataFrame) -> None:
         key=f"annotation_heatmap_{dataset}_{limit}_{include_unknown}",
     )
     st.caption(
-        "Cada linha do mapa de calor soma 100% entre as notas 1 a 5. A cor mostra a "
-        "porcentagem das falas daquela anotação que recebeu cada nota mais frequente."
+        "Cada linha do mapa de calor soma 100% entre as notas 1 a 5 para aquela "
+        "anotação. A célula mostra a porcentagem e o hover mostra a contagem."
     )
 
     frequencies = annotation_frequencies(
@@ -132,7 +185,7 @@ def render(df: pd.DataFrame) -> None:
     )
     frequencies["% das falas"] = frequencies["% das falas"].round(2)
 
-    st.markdown("**Tabela do recorte mostrado**")
+    st.markdown("#### Tabela do recorte mostrado")
     st.dataframe(frequencies, width="stretch", hide_index=True)
 
     decomposition = (
@@ -150,5 +203,38 @@ def render(df: pd.DataFrame) -> None:
             }
         )
     )
-    st.markdown("**Decomposição das anotações**")
+    st.markdown("#### Decomposição das anotações")
     st.dataframe(decomposition, width="stretch", hide_index=True)
+
+    st.markdown("#### Exemplos reais")
+    st.markdown(
+        """
+        Os exemplos ajudam a conferir como uma anotação aparece no texto. A nota exibida
+        é a nota mais frequente entre os anotadores, e a lista preserva as notas
+        individuais para leitura qualitativa.
+        """
+    )
+    example_left, example_right = st.columns([2, 1])
+    with example_left:
+        selected_annotation = st.selectbox(
+            "Anotação para exemplos",
+            actions,
+            index=0,
+        )
+    with example_right:
+        rating_options = [None] + sorted(
+            int(value) for value in chart_data["satisfaction_mode"].dropna().unique()
+        )
+        selected_rating = st.selectbox(
+            "Nota",
+            rating_options,
+            format_func=lambda value: (
+                "Todas" if value is None else f"{value} · {RATING_LABELS[value]}"
+            ),
+        )
+
+    examples = _examples_table(chart_data, selected_annotation, selected_rating)
+    if examples.empty:
+        st.info("Nenhum exemplo encontrado para essa combinação.")
+    else:
+        st.dataframe(examples, width="stretch", hide_index=True)

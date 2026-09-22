@@ -7,14 +7,29 @@ import plotly.graph_objects as go
 from src.config import RATING_LABELS
 from src.metrics import (
     RATING_VALUES,
+    agreement_summary,
     annotation_frequencies,
     annotation_rating_distribution,
     dialogue_lengths,
+    rating_distribution,
     real_user_turns,
 )
 
 
 COLOR_SEQUENCE = ["#2563eb", "#059669", "#d97706", "#dc2626", "#7c3aed", "#0891b2"]
+RATING_COLORS = {
+    "1 · Muito insatisfeito": "#b91c1c",
+    "2 · Insatisfeito": "#ea580c",
+    "3 · Normal": "#64748b",
+    "4 · Satisfeito": "#0f766e",
+    "5 · Muito satisfeito": "#2563eb",
+}
+AGREEMENT_COLORS = {
+    "Uma nota": "#94a3b8",
+    "Unanimidade": "#0f766e",
+    "Discordância leve": "#f59e0b",
+    "Discordância forte": "#b91c1c",
+}
 
 
 def rating_distribution_chart(df: pd.DataFrame) -> go.Figure:
@@ -43,6 +58,56 @@ def rating_distribution_chart(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
+def satisfaction_distribution_chart(
+    df: pd.DataFrame,
+    level: str,
+    percent: bool = True,
+) -> go.Figure:
+    """Cria barras empilhadas de notas por dataset."""
+    data = rating_distribution(df, level=level, percent=percent)
+    data["nota"] = data["satisfaction_mode"].map(
+        lambda value: f"{value} · {RATING_LABELS[int(value)]}"
+    )
+    value_column = "percentual" if percent else "total"
+    unit_label = "Percentual das falas" if percent else "Quantidade de falas"
+    if level == "overall":
+        unit_label = "Percentual dos diálogos" if percent else "Quantidade de diálogos"
+        title = "Como a avaliação geral dos diálogos se distribui?"
+    else:
+        title = "Como as notas se distribuem nas falas de usuário?"
+
+    fig = px.bar(
+        data,
+        x="dataset",
+        y=value_column,
+        color="nota",
+        barmode="stack",
+        category_orders={
+            "nota": [f"{value} · {RATING_LABELS[value]}" for value in RATING_VALUES]
+        },
+        color_discrete_map=RATING_COLORS,
+        labels={
+            "dataset": "Dataset",
+            value_column: unit_label,
+            "nota": "Nota",
+        },
+        title=title,
+        custom_data=["total", "percentual", "nota"],
+    )
+    fig.update_traces(
+        hovertemplate=(
+            "Dataset: %{x}<br>"
+            "Nota: %{customdata[2]}<br>"
+            "Registros: %{customdata[0]}<br>"
+            "Percentual: %{customdata[1]:.1f}%<extra></extra>"
+        )
+    )
+    fig.update_layout(legend_title_text="Nota")
+    if percent:
+        fig.update_yaxes(range=[0, 100], ticksuffix="%")
+    return fig
+
+
 def dialogues_by_dataset_chart(df: pd.DataFrame) -> go.Figure:
     """Cria gráfico com a quantidade de diálogos por dataset."""
     counts = (
@@ -51,63 +116,105 @@ def dialogues_by_dataset_chart(df: pd.DataFrame) -> go.Figure:
         .rename(columns={"dialogue_id": "dialogues"})
     )
 
-    return px.bar(
+    fig = px.bar(
         counts,
         x="dataset",
         y="dialogues",
         color="dataset",
         color_discrete_sequence=COLOR_SEQUENCE,
+        title="Quantos diálogos há em cada dataset?",
         labels={"dataset": "Dataset", "dialogues": "Diálogos"},
     )
+    fig.update_layout(showlegend=False)
+    return fig
 
 
 def top_actions_chart(df: pd.DataFrame, limit: int = 15) -> go.Figure:
-    """Cria gráfico com as ações mais frequentes no recorte selecionado."""
+    """Cria gráfico com as ações mais frequentes nos dados recebidos."""
     data = real_user_turns(df)
     counts = data["action_raw"].value_counts().head(limit).reset_index()
     counts.columns = ["action_raw", "total"]
 
-    return px.bar(
+    fig = px.bar(
         counts,
         x="total",
         y="action_raw",
         orientation="h",
         color="total",
         color_continuous_scale="Viridis",
+        title="Quais anotações aparecem com mais frequência?",
         labels={"total": "Total", "action_raw": "Ação"},
     )
+    fig.update_yaxes(autorange="reversed")
+    fig.update_layout(coloraxis_showscale=False)
+    return fig
 
 
 def disagreement_chart(df: pd.DataFrame) -> go.Figure:
     """Cria histograma da divergência entre anotadores."""
     data = real_user_turns(df).dropna(subset=["satisfaction_disagreement"])
 
-    return px.histogram(
+    fig = px.histogram(
         data,
         x="satisfaction_disagreement",
         nbins=20,
         color="dataset",
         color_discrete_sequence=COLOR_SEQUENCE,
+        title="Como se distribui a divergência entre notas?",
         labels={
             "satisfaction_disagreement": "Divergência",
             "count": "Total",
             "dataset": "Dataset",
         },
     )
+    return fig
+
+
+def agreement_chart(df: pd.DataFrame, include_overall: bool = True) -> go.Figure:
+    """Cria barras empilhadas para categorias de concordância."""
+    data = agreement_summary(df, include_overall=include_overall)
+    fig = px.bar(
+        data,
+        x="dataset",
+        y="percentual",
+        color="concordancia",
+        barmode="stack",
+        color_discrete_map=AGREEMENT_COLORS,
+        title="Onde os anotadores mais concordam ou discordam?",
+        labels={
+            "dataset": "Dataset",
+            "percentual": "Percentual dos registros avaliados",
+            "concordancia": "Concordância",
+        },
+        custom_data=["total"],
+    )
+    fig.update_traces(
+        hovertemplate=(
+            "Dataset: %{x}<br>"
+            "Categoria: %{legendgroup}<br>"
+            "Registros: %{customdata[0]}<br>"
+            "Percentual: %{y:.1f}%<extra></extra>"
+        )
+    )
+    fig.update_yaxes(range=[0, 100], ticksuffix="%")
+    return fig
 
 
 def dialogue_length_chart(df: pd.DataFrame) -> go.Figure:
     """Cria boxplot com o tamanho dos diálogos por dataset."""
     lengths = dialogue_lengths(df)
 
-    return px.box(
+    fig = px.box(
         lengths,
         x="dataset",
         y="turn_count",
         color="dataset",
         color_discrete_sequence=COLOR_SEQUENCE,
-        labels={"dataset": "Dataset", "turn_count": "Turnos por diálogo"},
+        title="Quantas falas há em cada diálogo?",
+        labels={"dataset": "Dataset", "turn_count": "Falas por diálogo"},
     )
+    fig.update_layout(showlegend=False)
+    return fig
 
 
 def satisfaction_timeline_chart(dialogue_df: pd.DataFrame) -> go.Figure:
@@ -121,6 +228,7 @@ def satisfaction_timeline_chart(dialogue_df: pd.DataFrame) -> go.Figure:
         x="turn_id",
         y="satisfaction_mode",
         markers=True,
+        title="Como a satisfação evolui nesta conversa?",
         labels={"turn_id": "Turno", "satisfaction_mode": "Satisfação"},
     )
     fig.update_yaxes(range=[0.8, 5.2], dtick=1)
@@ -233,35 +341,3 @@ def annotation_rating_heatmap(
         ticktext=[f"{value} · {RATING_LABELS[value]}" for value in RATING_VALUES],
     )
     return fig
-
-
-def low_satisfaction_chart(low_rate_df: pd.DataFrame) -> go.Figure:
-    """Cria gráfico da proporção de baixa satisfação por dataset."""
-    return px.bar(
-        low_rate_df,
-        x="dataset",
-        y="low_satisfaction",
-        color="dataset",
-        color_discrete_sequence=COLOR_SEQUENCE,
-        labels={
-            "dataset": "Dataset",
-            "low_satisfaction": "Baixa satisfação (%)",
-        },
-    )
-
-
-def three_class_distribution_chart(counts_df: pd.DataFrame) -> go.Figure:
-    """Cria gráfico com a distribuição das classes agregadas de satisfação."""
-    return px.bar(
-        counts_df,
-        x="dataset",
-        y="total",
-        color="satisfaction_3_classes",
-        barmode="group",
-        color_discrete_sequence=COLOR_SEQUENCE,
-        labels={
-            "dataset": "Dataset",
-            "total": "Total",
-            "satisfaction_3_classes": "Classe",
-        },
-    )

@@ -8,11 +8,8 @@ from pages_app import (
     dataset_comparison,
     dialogue_inspection,
     guide,
-    instance_analysis,
     overview,
-    sentiment_preparation,
 )
-from src.config import RATING_LABELS
 from src.loaders import ensure_annotation_columns, load_normalized_dataset
 
 
@@ -29,7 +26,7 @@ def apply_custom_styles() -> None:
         """
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Comfortaa:wght@300;400;500;600;700&display=swap');
-        html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
+        html, body, .stApp, [data-testid="stAppViewContainer"] {
             font-family: "Comfortaa", sans-serif;
         }
         .stMarkdown, .stText, .stCaption, .stDataFrame, .stMetric, button, input, textarea {
@@ -37,23 +34,6 @@ def apply_custom_styles() -> None:
         }
         code, pre {
             font-family: "Source Code Pro", monospace;
-        }
-        .guide-card {
-            border: 1px solid rgba(49, 51, 63, 0.16);
-            border-radius: 8px;
-            padding: 1rem;
-            background: rgba(250, 250, 250, 0.7);
-            height: 100%;
-            box-sizing: border-box;
-        }
-        .guide-card h4 {
-            margin: 0 0 0.35rem 0;
-        }
-        .dataset-grid {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 1rem;
-            align-items: stretch;
         }
         .source-help {
             position: relative;
@@ -79,13 +59,13 @@ def apply_custom_styles() -> None:
             bottom: 135%;
             transform: translateX(-50%);
             width: max-content;
-            max-width: 28rem;
-            padding: 0.55rem 0.65rem;
+            max-width: 42rem;
+            padding: 0.75rem 0.85rem;
             border-radius: 6px;
             background: #111827;
             color: #ffffff;
-            font-size: 0.82rem;
-            line-height: 1.35;
+            font-size: 0.86rem;
+            line-height: 1.45;
             box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
             white-space: normal;
         }
@@ -136,11 +116,6 @@ def apply_custom_styles() -> None:
             border-color: rgba(37, 99, 235, 0.55);
             background: rgba(37, 99, 235, 0.10);
         }
-        @media (max-width: 900px) {
-            .dataset-grid {
-                grid-template-columns: 1fr;
-            }
-        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -157,53 +132,11 @@ def show_missing_data_help(error: Exception) -> None:
     """Exibe instruções quando os arquivos brutos ainda não foram baixados."""
     st.error("Não foi possível carregar os arquivos do dataset.")
     st.info(
-        "O app tenta usar os arquivos em `data/raw` e baixa automaticamente se eles "
+        "A aplicação tenta usar os arquivos em `data/raw` e baixa automaticamente se eles "
         "não estiverem disponíveis. Verifique a conexão com a internet ou execute "
         "`uv run python scripts/download_data.py`."
     )
     st.code(str(error), language="text")
-
-
-def filter_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    """Aplica filtros globais escolhidos na barra lateral."""
-    st.sidebar.header("Filtros")
-
-    datasets = sorted(df["dataset"].unique())
-    selected_datasets = st.sidebar.multiselect(
-        "Datasets",
-        datasets,
-        default=datasets,
-    )
-
-    include_overall = st.sidebar.checkbox("Incluir linhas OVERALL", value=False)
-    include_system = st.sidebar.checkbox("Incluir falas do sistema", value=True)
-
-    ratings = sorted(
-        int(value) for value in df["satisfaction_mode"].dropna().unique().tolist()
-    )
-    selected_ratings = st.sidebar.multiselect(
-        "Notas de satisfação",
-        ratings,
-        default=ratings,
-        format_func=lambda value: f"{value} · {RATING_LABELS.get(value, '')}",
-    )
-
-    filtered = df[df["dataset"].isin(selected_datasets)].copy()
-
-    if not include_overall:
-        filtered = filtered[~filtered["is_overall"]]
-
-    if not include_system:
-        filtered = filtered[filtered["role"] != "SYSTEM"]
-
-    # Linhas do sistema não têm satisfação, por isso são preservadas quando o filtro permite.
-    if selected_ratings:
-        filtered = filtered[
-            filtered["satisfaction_mode"].isin(selected_ratings)
-            | filtered["satisfaction_mode"].isna()
-        ]
-
-    return filtered
 
 
 def main() -> None:
@@ -221,11 +154,10 @@ def main() -> None:
         show_missing_data_help(error)
         return
 
-    filtered = filter_dataframe(df)
-    filtered = ensure_annotation_columns(filtered)
+    df = ensure_annotation_columns(df)
 
-    if filtered.empty:
-        st.warning("Nenhuma linha encontrada para os filtros selecionados.")
+    if df.empty:
+        st.warning("Nenhuma linha foi carregada.")
         return
 
     pages = [
@@ -236,7 +168,7 @@ def main() -> None:
             default=True,
         ),
         st.Page(
-            lambda: overview.render(filtered),
+            lambda: overview.render(df),
             title="Visão geral",
             url_path="visao-geral",
         ),
@@ -246,24 +178,14 @@ def main() -> None:
             url_path="inspecao-dialogo",
         ),
         st.Page(
-            lambda: instance_analysis.render(filtered),
-            title="Análise de instâncias",
-            url_path="analise-instancias",
-        ),
-        st.Page(
-            lambda: dataset_annotations.render(filtered),
+            lambda: dataset_annotations.render(df),
             title="Anotações por dataset",
             url_path="anotacoes-dataset",
         ),
         st.Page(
-            lambda: dataset_comparison.render(filtered),
+            lambda: dataset_comparison.render(df),
             title="Comparação",
             url_path="comparacao",
-        ),
-        st.Page(
-            lambda: sentiment_preparation.render(filtered),
-            title="Sentimentos e bot",
-            url_path="sentimentos-bot",
         ),
     ]
     navigation = st.navigation(

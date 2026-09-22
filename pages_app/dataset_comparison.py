@@ -15,9 +15,9 @@ def render(df: pd.DataFrame) -> None:
     st.subheader("Comparação entre datasets")
     st.markdown(
         """
-        Esta página compara os datasets em inglês do USS. A comparação ajuda a mostrar que
-        os arquivos pertencem ao mesmo projeto, mas têm domínios, ações e formatos de
-        anotação diferentes.
+        Esta página compara os datasets em inglês do USS. A leitura deve considerar que
+        cada base nasceu de um domínio e de um esquema de anotação diferente. Diferenças
+        numéricas descrevem estas amostras e não funcionam como ranking de sistemas.
         """
     )
 
@@ -44,8 +44,9 @@ def render(df: pd.DataFrame) -> None:
 
     st.markdown(
         """
-        O gráfico abaixo permite comparar o desbalanceamento das notas. Em geral, a classe
-        3 aparece com muita força, o que é importante para qualquer análise futura.
+        O gráfico abaixo compara a distribuição das notas nas falas reais de usuário.
+        A nota 3 aparece com muita força, então diferenças pequenas devem ser lidas com
+        cuidado e sempre acompanhadas dos denominadores.
         """
     )
     st.plotly_chart(
