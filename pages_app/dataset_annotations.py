@@ -5,28 +5,13 @@ import streamlit as st
 
 from src.charts import annotation_frequency_chart, annotation_rating_heatmap
 from src.config import RATING_LABELS
-from src.content import explain_annotation
+from src.content import annotation_narrative, explain_annotation
 from src.loaders import ensure_annotation_columns
 from src.metrics import annotation_frequencies, real_user_turns
 
 
 def _format_number(value: int) -> str:
     return f"{value:,}".replace(",", ".")
-
-
-def _glossary_table(dataset: str, actions: list[str]) -> pd.DataFrame:
-    rows = []
-    for action in actions:
-        guide = explain_annotation(dataset, action)
-        rows.append(
-            {
-                "Anotação": guide.code,
-                "Explicação": guide.meaning,
-                "Como ler": guide.how_to_read,
-                "Fonte": guide.source,
-            }
-        )
-    return pd.DataFrame(rows)
 
 
 def _examples_table(data: pd.DataFrame, annotation: str, rating: int | None) -> pd.DataFrame:
@@ -58,15 +43,27 @@ def _examples_table(data: pd.DataFrame, annotation: str, rating: int | None) -> 
     )
 
 
+def _render_annotation_card(dataset: str, action: str, total: int, percent: float) -> None:
+    guide = explain_annotation(dataset, action)
+    with st.container(border=True):
+        st.markdown(f"#### `{guide.code}`")
+        left, right = st.columns(2)
+        left.metric("Ocorrências", _format_number(total))
+        right.metric("% das falas", f"{percent:.2f}%".replace(".", ","))
+        st.markdown(guide.meaning)
+        st.markdown(guide.how_to_read)
+
+
 def render(df: pd.DataFrame) -> None:
     """Renderiza gráficos, glossário e exemplos de anotações por dataset."""
     df = ensure_annotation_columns(df)
     st.subheader("Anotações por dataset")
     st.markdown(
         """
-        Cada dataset preserva seu próprio vocabulário de anotação. Esta página mostra
-        frequência, decomposição, exemplos e relação com notas de satisfação para ajudar
-        a ler códigos simples e compostos sem perder a origem de cada base.
+        As anotações do USS não formam um vocabulário único. Cada dataset traz marcas
+        próprias da sua origem: atos de diálogo em SGD, domínio e ato em MWOZ, ausência
+        de ação no arquivo principal de ReDial e entidades de preferência no CCPE. Essa
+        diferença é parte dos dados, não ruído que deva ser apagado.
         """
     )
 
@@ -118,28 +115,64 @@ def render(df: pd.DataFrame) -> None:
     col3.metric("Anotações distintas", _format_number(unique_annotations))
     col4.metric("Falas com nota", _format_number(int(scored_turns)))
 
-    st.markdown("#### Como ler os códigos deste dataset?")
+    actions = sorted(chart_data["action_raw"].dropna().unique())
+    narrative = annotation_narrative(dataset)
+    st.markdown(f"#### {narrative.title}")
+    st.markdown(narrative.body)
+    st.markdown(narrative.examples_intro)
+
+    frequencies_all = annotation_frequencies(
+        dataset_df,
+        include_unknown=include_unknown,
+    )
+
+    st.markdown("#### Investigar uma anotação específica")
     st.markdown(
         """
-        O mesmo campo `action_raw` guarda formatos diferentes. Em SGD, o código costuma
-        ser um ato de diálogo. Em MWOZ, o hífen separa domínio e ato. Em CCPE, o sinal de
-        mais separa tipo de marcação e entidade. Em ReDial, `UNKNOWN` aparece porque o
-        arquivo principal não traz ações no mesmo padrão.
+        Use a busca para aproximar a explicação de um código concreto. A explicação
+        abaixo fala sobre o que a anotação representa dentro do dataset selecionado; os
+        exemplos no fim da página mostram como ela aparece em falas reais.
         """
     )
-
-    actions = sorted(chart_data["action_raw"].dropna().unique())
     query = st.text_input(
-        "Buscar anotação no glossário",
+        "Buscar anotação",
         placeholder="Ex.: THANK_YOU, Hotel-Inform, ENTITY_OTHER",
     )
-    glossary_actions = [
+    matched_actions = [
         action for action in actions if not query or query.lower() in action.lower()
     ]
-    glossary_df = _glossary_table(dataset, glossary_actions)
-    st.dataframe(glossary_df, width="stretch", hide_index=True)
+    if matched_actions:
+        selected_explained_action = st.selectbox(
+            "Anotação explicada",
+            matched_actions,
+            index=0,
+        )
+        frequency_row = frequencies_all[
+            frequencies_all["action_raw"] == selected_explained_action
+        ]
+        if frequency_row.empty:
+            action_total = 0
+            action_percent = 0.0
+        else:
+            action_total = int(frequency_row.iloc[0]["total"])
+            action_percent = float(frequency_row.iloc[0]["percentual"])
+        _render_annotation_card(
+            dataset,
+            selected_explained_action,
+            action_total,
+            action_percent,
+        )
+    else:
+        st.info("Nenhuma anotação encontrada para essa busca.")
 
     st.markdown("#### Quais anotações aparecem mais?")
+    st.markdown(
+        """
+        A frequência mostra quais partes do vocabulário dominam o dataset selecionado.
+        Em MWOZ, por exemplo, domínios muito presentes aparecem no topo; em ReDial, a
+        predominância de `UNKNOWN` revela a ausência de ações no arquivo principal.
+        """
+    )
     st.plotly_chart(
         annotation_frequency_chart(
             dataset_df,
@@ -150,12 +183,17 @@ def render(df: pd.DataFrame) -> None:
         width="stretch",
         key=f"annotation_frequency_{dataset}_{limit}_{include_unknown}",
     )
-    st.caption(
-        "Unidade: falas reais de usuário. O hover mostra contagem e percentual dentro "
-        "do dataset selecionado."
-    )
 
     st.markdown("#### Como as notas se distribuem dentro de cada anotação?")
+    st.markdown(
+        """
+        O mapa de calor aproxima duas camadas do USS: o que a fala faz na conversa e como
+        ela foi avaliada em satisfação. Ele não prova causalidade, mas ajuda a escolher
+        bons pontos de leitura qualitativa. Quando uma anotação concentra quase todas as
+        falas na nota 3, isso revela mais sobre o desbalanceamento da amostra do que sobre
+        um comportamento necessariamente neutro.
+        """
+    )
     st.plotly_chart(
         annotation_rating_heatmap(
             dataset_df,
@@ -165,10 +203,6 @@ def render(df: pd.DataFrame) -> None:
         ),
         width="stretch",
         key=f"annotation_heatmap_{dataset}_{limit}_{include_unknown}",
-    )
-    st.caption(
-        "Cada linha do mapa de calor soma 100% entre as notas 1 a 5 para aquela "
-        "anotação. A célula mostra a porcentagem e o hover mostra a contagem."
     )
 
     frequencies = annotation_frequencies(
@@ -185,7 +219,7 @@ def render(df: pd.DataFrame) -> None:
     )
     frequencies["% das falas"] = frequencies["% das falas"].round(2)
 
-    st.markdown("#### Tabela do recorte mostrado")
+    st.markdown("#### Frequência das anotações")
     st.dataframe(frequencies, width="stretch", hide_index=True)
 
     decomposition = (
@@ -204,14 +238,21 @@ def render(df: pd.DataFrame) -> None:
         )
     )
     st.markdown("#### Decomposição das anotações")
+    st.markdown(
+        """
+        A decomposição mantém o código original e separa suas partes quando existe uma
+        estrutura clara. Isso é especialmente útil em MWOZ, onde domínio e ato aparecem
+        juntos, e em CCPE, onde tipo de entidade e alvo aparecem no mesmo código.
+        """
+    )
     st.dataframe(decomposition, width="stretch", hide_index=True)
 
     st.markdown("#### Exemplos reais")
     st.markdown(
         """
-        Os exemplos ajudam a conferir como uma anotação aparece no texto. A nota exibida
-        é a nota mais frequente entre os anotadores, e a lista preserva as notas
-        individuais para leitura qualitativa.
+        A melhor forma de conferir uma anotação é voltar ao texto. Os exemplos abaixo
+        preservam a fala original e as notas individuais, porque o significado de uma
+        marca só fica completo quando aparece dentro de uma conversa.
         """
     )
     example_left, example_right = st.columns([2, 1])

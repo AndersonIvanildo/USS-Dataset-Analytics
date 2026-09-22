@@ -21,7 +21,8 @@ class ArticleNote:
 
     title: str
     translated: str
-    source_context: str
+    source_reference: str
+    source_excerpt: str
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,16 @@ class AnnotationGuide:
     meaning: str
     how_to_read: str
     source: str
+
+
+@dataclass(frozen=True)
+class DatasetAnnotationNarrative:
+    """Explica o vocabulário de anotação de um dataset."""
+
+    dataset: str
+    title: str
+    body: str
+    examples_intro: str
 
 
 DATASET_GUIDES = [
@@ -149,7 +160,8 @@ ARTICLE_NOTES = [
             "O USS não nasce como uma coleta única. Ele combina bases já existentes para "
             "reunir domínios diferentes e observar satisfação em vários tipos de tarefa."
         ),
-        source_context="five benchmark task-oriented dialogue datasets",
+        source_reference="Seção 4.1, Data preparation",
+        source_excerpt="...five benchmark task-oriented dialogue datasets...",
     ),
     ArticleNote(
         title="O momento da anotação",
@@ -158,7 +170,8 @@ ARTICLE_NOTES = [
             "representa uma leitura do contexto anterior, não uma análise de sentimento "
             "da frase que aparece na mesma linha."
         ),
-        source_context="before the user’s sentence",
+        source_reference="Seção 4.2, User satisfaction assessment",
+        source_excerpt="...before the user utterance...",
     ),
     ArticleNote(
         title="A linha OVERALL",
@@ -166,7 +179,8 @@ ARTICLE_NOTES = [
             "`OVERALL` representa satisfação no nível do diálogo completo. Ela deve ser "
             "separada das falas reais de usuário, porque muda a unidade de análise."
         ),
-        source_context="dialogue-level satisfaction as the last user utterance",
+        source_reference="Seção 5.2, Implementation details",
+        source_excerpt='...use “overall” as the identification...',
     ),
     ArticleNote(
         title="O desbalanceamento das notas",
@@ -175,7 +189,8 @@ ARTICLE_NOTES = [
             "numéricos precisam mostrar denominadores e não devem transformar diferenças "
             "entre bases em ranking de qualidade."
         ),
-        source_context="serious imbalance of the satisfaction label",
+        source_reference="Seção 5.2, Implementation details",
+        source_excerpt="...serious imbalance of the satisfaction label...",
     ),
 ]
 
@@ -232,6 +247,100 @@ ANNOTATION_GUIDES = [
         source="Arquivo principal do ReDial no USS.",
     ),
 ]
+
+
+ANNOTATION_NARRATIVES = {
+    "SGD": DatasetAnnotationNarrative(
+        dataset="SGD",
+        title="SGD: atos de diálogo de um assistente orientado a tarefa",
+        body=(
+            "No SGD, as anotações funcionam como atos de diálogo. Elas descrevem o tipo "
+            "de movimento que a fala do usuário faz dentro da tarefa: informar algo, "
+            "confirmar, negar, pedir uma alternativa, agradecer ou encerrar. Esses atos "
+            "são úteis porque aproximam o texto livre de uma estrutura de interação. Em "
+            "vez de olhar apenas para a frase, a análise consegue perguntar que papel "
+            "aquela fala exerce na conversa."
+        ),
+        examples_intro=(
+            "`THANK_YOU` é um agradecimento, mas não deve ser lido automaticamente como "
+            "satisfação alta. A nota continua ligada ao contexto anterior. Um usuário "
+            "pode agradecer depois de uma solução boa, mas também pode encerrar uma "
+            "interação apenas porque não há mais o que tentar."
+        ),
+    ),
+    "MWOZ": DatasetAnnotationNarrative(
+        dataset="MWOZ",
+        title="MWOZ: domínio e ato na mesma anotação",
+        body=(
+            "No MWOZ, a anotação geralmente combina o domínio da tarefa com o ato de "
+            "diálogo. Isso torna o código mais informativo do que um rótulo isolado, "
+            "porque ele preserva o assunto da conversa e o movimento feito pelo usuário. "
+            "Quando aparece `Hotel-Inform`, a fala está no domínio de hotel e fornece "
+            "alguma informação relevante para a tarefa. Quando aparece "
+            "`Restaurant-Request`, a fala pede informação dentro do domínio de restaurante."
+        ),
+        examples_intro=(
+            "O hífen em `Hotel-Inform` não é decoração: ele separa duas camadas. A "
+            "primeira parte localiza o domínio; a segunda descreve o ato. Por isso, "
+            "comparar apenas `Inform` sem considerar o domínio pode apagar diferenças "
+            "importantes entre tipos de tarefa."
+        ),
+    ),
+    "ReDial": DatasetAnnotationNarrative(
+        dataset="ReDial",
+        title="ReDial: recomendação de filmes sem ação no arquivo principal",
+        body=(
+            "O ReDial é diferente dos outros datasets desta análise porque o arquivo "
+            "principal carregado não traz ações no mesmo campo usado por SGD, MWOZ e "
+            "CCPE. Por isso, as falas aparecem como `UNKNOWN`. Esse valor não representa "
+            "uma intenção do usuário nem uma categoria semântica; ele sinaliza ausência "
+            "de anotação de ação nesse arquivo."
+        ),
+        examples_intro=(
+            "Nesse caso, o mais importante é não comparar `UNKNOWN` do ReDial com "
+            "`UNKNOWN` de outro dataset como se fossem a mesma coisa. No ReDial, ele "
+            "domina porque a ação não está disponível no arquivo principal."
+        ),
+    ),
+    "CCPE": DatasetAnnotationNarrative(
+        dataset="CCPE",
+        title="CCPE: tipo de entidade e alvo da preferência",
+        body=(
+            "No CCPE, os códigos frequentemente ligam uma marcação sobre entidade ao "
+            "tipo de objeto mencionado na conversa. O sinal de mais cria uma anotação "
+            "composta: antes dele aparece o tipo da marcação; depois dele aparece o alvo. "
+            "Isso combina bem com o domínio do dataset, porque conversas sobre filmes "
+            "dependem de preferências, nomes, gêneros, descrições e referências a obras "
+            "ou pessoas."
+        ),
+        examples_intro=(
+            "`ENTITY_OTHER+MOVIE_OR_SERIES` indica uma marcação do tipo `ENTITY_OTHER` "
+            "aplicada ao alvo `MOVIE_OR_SERIES`. A graça desse formato é preservar a "
+            "estrutura da menção: não é só uma ação geral, mas uma ação ligada a um tipo "
+            "de entidade."
+        ),
+    ),
+}
+
+
+def annotation_narrative(dataset: str) -> DatasetAnnotationNarrative:
+    """Retorna a explicação narrativa de anotações para um dataset."""
+    return ANNOTATION_NARRATIVES.get(
+        dataset,
+        DatasetAnnotationNarrative(
+            dataset=dataset,
+            title=f"{dataset}: vocabulário preservado do arquivo original",
+            body=(
+                "As anotações deste dataset foram preservadas como aparecem no USS. "
+                "A interpretação deve combinar frequência, exemplos reais e distribuição "
+                "de notas."
+            ),
+            examples_intro=(
+                "Códigos desconhecidos devem ser lidos com apoio dos exemplos, porque "
+                "nem todo dataset usa o mesmo esquema de anotação."
+            ),
+        ),
+    )
 
 
 def explain_annotation(dataset: str, code: str) -> AnnotationGuide:

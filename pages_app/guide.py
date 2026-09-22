@@ -9,20 +9,27 @@ from src.content import ARTICLE_NOTES, COLUMN_GUIDE, DATASET_GUIDES, RATING_GUID
 from src.loaders import ensure_annotation_columns
 
 
-def source_badge(source_context: str) -> str:
+def source_badge(source_reference: str, source_excerpt: str) -> str:
     """Cria um ícone de ajuda com trecho literal do artigo."""
-    context = escape(source_context)
+    reference = escape(source_reference)
+    excerpt = escape(source_excerpt)
     return (
         '<span class="source-help">?'
-        f'<span class="source-tooltip">Trecho literal do artigo: “{context}”</span>'
+        f'<span class="source-tooltip">{reference}: “{excerpt}”</span>'
         "</span>"
     )
 
 
-def render_article_note(title: str, body: str, source_context: str) -> None:
+def render_article_note(
+    title: str,
+    body: str,
+    source_reference: str,
+    source_excerpt: str,
+) -> None:
     """Renderiza uma nota narrativa baseada no artigo."""
     st.markdown(
-        f"**{escape(title)}** {source_badge(source_context)}  \n{escape(body)}",
+        f"**{escape(title)}** {source_badge(source_reference, source_excerpt)}  \n"
+        f"{escape(body)}",
         unsafe_allow_html=True,
     )
 
@@ -75,8 +82,11 @@ def render_dataset_cards() -> None:
                     st.markdown(
                         f"#### {dataset_guide.name}: {dataset_guide.full_name}"
                     )
-                    st.caption(f"{dataset_guide.language} · {dataset_guide.domain}")
+                    meta_left, meta_right = st.columns([1, 2])
+                    meta_left.metric("Idioma", dataset_guide.language)
+                    meta_right.metric("Domínio", dataset_guide.domain)
                     st.markdown(dataset_guide.description)
+                    st.divider()
                     st.markdown(dataset_guide.how_to_read)
 
 
@@ -123,7 +133,12 @@ def render(df: pd.DataFrame) -> None:
     )
 
     for note in ARTICLE_NOTES:
-        render_article_note(note.title, note.translated, note.source_context)
+        render_article_note(
+            note.title,
+            note.translated,
+            note.source_reference,
+            note.source_excerpt,
+        )
 
     st.markdown("#### O que cada dataset é")
     st.markdown(
