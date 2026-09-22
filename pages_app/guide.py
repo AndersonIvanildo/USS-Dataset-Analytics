@@ -72,6 +72,17 @@ def overall_example(df: pd.DataFrame) -> pd.DataFrame:
     return example
 
 
+def _guide_dataset_callout(dataset_name: str, domain: str) -> None:
+    renderers = {
+        "CCPE": st.success,
+        "MWOZ": st.info,
+        "ReDial": st.warning,
+        "SGD": st.success,
+    }
+    renderer = renderers.get(dataset_name, st.info)
+    renderer(f"{dataset_name} · {domain}")
+
+
 def render_dataset_cards() -> None:
     """Mostra os datasets de origem em containers nativos."""
     for index in range(0, len(DATASET_GUIDES), 2):
@@ -82,9 +93,8 @@ def render_dataset_cards() -> None:
                     st.markdown(
                         f"#### {dataset_guide.name}: {dataset_guide.full_name}"
                     )
-                    meta_left, meta_right = st.columns([1, 2])
-                    meta_left.metric("Idioma", dataset_guide.language)
-                    meta_right.metric("Domínio", dataset_guide.domain)
+                    _guide_dataset_callout(dataset_guide.name, dataset_guide.domain)
+                    st.caption(f"Idioma: {dataset_guide.language}")
                     st.markdown(dataset_guide.description)
                     st.divider()
                     st.markdown(dataset_guide.how_to_read)

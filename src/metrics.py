@@ -207,10 +207,6 @@ def coverage_summary(df: pd.DataFrame) -> pd.DataFrame:
         user_turns.groupby("dataset")
         .agg(
             falas_reais=("role", "size"),
-            tres_ou_mais_notas=(
-                "satisfaction_annotation_count",
-                lambda values: int((values >= 3).sum()),
-            ),
             unknown_falas_reais=(
                 "action_raw",
                 lambda values: int((values == "UNKNOWN").sum()),

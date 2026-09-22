@@ -117,6 +117,7 @@ def test_dataset_summary_and_coverage_use_expected_units() -> None:
     assert sgd_summary["unknown"] == 0
 
     sgd_coverage = coverage[coverage["dataset"] == "SGD"].iloc[0]
+    assert "tres_ou_mais_notas" not in coverage.columns
     assert sgd_coverage["overall"] == 1
     assert sgd_coverage["falas_reais"] == 2
     assert sgd_coverage["unknown_falas_reais"] == 0

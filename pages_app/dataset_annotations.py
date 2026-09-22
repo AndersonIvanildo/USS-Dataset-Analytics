@@ -75,21 +75,8 @@ def render(df: pd.DataFrame) -> None:
     datasets = sorted(user_turns["dataset"].unique())
     default_index = datasets.index("MWOZ") if "MWOZ" in datasets else 0
 
-    control_left, control_right = st.columns([2, 1])
-    with control_left:
-        dataset = st.selectbox("Dataset", datasets, index=default_index)
-    with control_right:
-        limit = st.slider(
-            "Quantidade de anotações nos gráficos",
-            min_value=5,
-            max_value=30,
-            value=15,
-            step=1,
-            help=(
-                "Limita quantas categorias aparecem nas barras e no mapa de calor. "
-                "Não altera os dados originais."
-            ),
-        )
+    dataset = st.selectbox("Dataset", datasets, index=default_index)
+    limit = None
 
     include_unknown = st.checkbox(
         "Incluir UNKNOWN",
@@ -167,12 +154,13 @@ def render(df: pd.DataFrame) -> None:
     else:
         st.info("Nenhuma anotação encontrada para essa busca.")
 
-    st.markdown("#### Quais anotações aparecem mais?")
+    st.markdown("#### Quantas falas aparecem em cada anotação?")
     st.markdown(
         """
-        A frequência mostra quais partes do vocabulário dominam o dataset selecionado.
-        Em MWOZ, por exemplo, domínios muito presentes aparecem no topo; em ReDial, a
-        predominância de `UNKNOWN` revela a ausência de ações no arquivo principal.
+        A frequência mostra o vocabulário completo do dataset selecionado no recorte
+        atual. Nenhuma anotação é escondida por limite de quantidade. Em MWOZ, por
+        exemplo, domínios muito presentes aparecem no topo; em ReDial, a predominância
+        de `UNKNOWN` revela a ausência de ações no arquivo principal.
         """
     )
     st.plotly_chart(
@@ -183,7 +171,7 @@ def render(df: pd.DataFrame) -> None:
             include_unknown=include_unknown,
         ),
         width="stretch",
-        key=f"annotation_frequency_{dataset}_{limit}_{include_unknown}",
+        key=f"annotation_frequency_{dataset}_all_{include_unknown}",
     )
 
     st.markdown("#### Como as notas se distribuem dentro de cada anotação?")
@@ -204,7 +192,7 @@ def render(df: pd.DataFrame) -> None:
             include_unknown=include_unknown,
         ),
         width="stretch",
-        key=f"annotation_heatmap_{dataset}_{limit}_{include_unknown}",
+        key=f"annotation_heatmap_{dataset}_all_{include_unknown}",
     )
 
     frequencies = annotation_frequencies(

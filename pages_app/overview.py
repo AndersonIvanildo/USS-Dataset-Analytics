@@ -32,13 +32,38 @@ def _rating_label(value: object) -> str:
     return f"{score} · {RATING_LABELS[score]}"
 
 
+def _dataset_callout(dataset: str) -> None:
+    messages = {
+        "CCPE": (
+            st.success,
+            "CCPE traz conversas de preferência. As anotações combinam o tipo de entidade e o alvo citado na fala.",
+        ),
+        "MWOZ": (
+            st.info,
+            "MWOZ organiza ações como domínio + ato, por isso códigos como Hotel-Inform aparecem juntos.",
+        ),
+        "ReDial": (
+            st.warning,
+            "ReDial preserva as notas do USS, mas o arquivo principal não traz ações de diálogo. Por isso as falas reais aparecem como UNKNOWN.",
+        ),
+        "SGD": (
+            st.success,
+            "SGD usa atos de diálogo mais diretos, como THANK_YOU, para marcar o movimento da fala na conversa.",
+        ),
+    }
+    renderer, text = messages.get(dataset, (st.info, "Dataset carregado no recorte atual do USS."))
+    renderer(text)
+
+
 def _render_dataset_cards(summary: pd.DataFrame) -> None:
     st.markdown("#### O que cada dataset traz para o acervo carregado?")
     st.markdown(
         """
         Os quatro datasets têm origens e formatos de anotação diferentes. Os cartões
         abaixo mostram volume, cobertura e alguns sinais que ajudam a interpretar os
-        gráficos seguintes sem transformar as bases em ranking de qualidade.
+        gráficos seguintes sem transformar as bases em ranking de qualidade. `UNKNOWN`
+        conta falas reais de usuário sem ação identificada no arquivo carregado;
+        `OVERALL` conta avaliações gerais de diálogo e fica separado das falas comuns.
         """
     )
 
@@ -48,6 +73,7 @@ def _render_dataset_cards(summary: pd.DataFrame) -> None:
             with column:
                 with st.container(border=True):
                     st.markdown(f"#### {row['dataset']}")
+                    _dataset_callout(row["dataset"])
                     col1, col2, col3 = st.columns(3)
                     col1.metric("Diálogos", _format_number(row["dialogos"]))
                     col2.metric("Falas de usuário", _format_number(row["falas_usuario"]))
@@ -74,13 +100,13 @@ def _render_coverage_table(df: pd.DataFrame) -> None:
     if coverage.empty:
         return
 
+    coverage = coverage[["dataset", "falas_reais", "unknown_falas_reais", "overall"]]
     coverage = coverage.rename(
         columns={
             "dataset": "Dataset",
             "falas_reais": "Falas reais de usuário",
-            "overall": "OVERALL",
-            "tres_ou_mais_notas": "Três ou mais notas",
             "unknown_falas_reais": "UNKNOWN em falas reais",
+            "overall": "OVERALL",
         }
     )
     st.dataframe(coverage, width="stretch", hide_index=True)
@@ -199,12 +225,13 @@ def render(df: pd.DataFrame) -> None:
     )
     _render_agreement_table(df)
 
-    st.markdown("#### Quais anotações aparecem mais no conjunto?")
+    st.markdown("#### Como as anotações aparecem no conjunto?")
     st.markdown(
         """
         As anotações ajudam a entender que tipo de movimento aparece nas falas de
-        usuário. Como cada dataset usa vocabulário próprio, esse gráfico serve como
-        ponto de partida; a interpretação detalhada fica na página de anotações.
+        usuário. Como cada dataset usa vocabulário próprio, o gráfico mostra todas as
+        categorias preservadas no recorte carregado. A interpretação detalhada fica na
+        página de anotações.
         """
     )
     st.plotly_chart(
@@ -216,10 +243,23 @@ def render(df: pd.DataFrame) -> None:
     st.markdown("#### Como está a cobertura dos dados?")
     st.markdown(
         """
-        A tabela abaixo mostra quantas falas reais de usuário existem, quantas avaliações
-        gerais `OVERALL` fecham os diálogos e quantas falas têm três ou mais notas de
-        anotadores. `UNKNOWN` é contado apenas nas falas reais, para não misturar a falta
-        de ação das linhas `OVERALL` com ausência de anotação nas mensagens do usuário.
+        A cobertura separa duas coisas que parecem parecidas na tabela, mas têm papéis
+        diferentes no USS. `OVERALL` é uma linha especial de avaliação geral: ela fecha
+        cada diálogo e não representa uma fala comum do usuário. `UNKNOWN` aparece no
+        campo de anotação da fala quando não há uma ação identificada no arquivo carregado.
+        Por isso, `UNKNOWN` é contado apenas nas falas reais de usuário, enquanto
+        `OVERALL` é contado como avaliação final do diálogo.
         """
     )
+    left, right = st.columns(2)
+    with left:
+        st.info(
+            "Falas reais de usuário são as mensagens USER que fazem parte da conversa. "
+            "Elas entram nas análises de anotação e satisfação por fala."
+        )
+    with right:
+        st.warning(
+            "OVERALL é guardado separado porque resume o diálogo inteiro. Ele não é "
+            "tratado como ação, nem como mais uma fala dentro da conversa."
+        )
     _render_coverage_table(df)

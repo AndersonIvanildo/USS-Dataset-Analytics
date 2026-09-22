@@ -129,10 +129,12 @@ def dialogues_by_dataset_chart(df: pd.DataFrame) -> go.Figure:
     return fig
 
 
-def top_actions_chart(df: pd.DataFrame, limit: int = 15) -> go.Figure:
-    """Cria gráfico com as ações mais frequentes nos dados recebidos."""
+def top_actions_chart(df: pd.DataFrame, limit: int | None = None) -> go.Figure:
+    """Cria gráfico com as ações dos dados recebidos."""
     data = real_user_turns(df)
-    counts = data["action_raw"].value_counts().head(limit).reset_index()
+    counts = data["action_raw"].value_counts().reset_index()
+    if limit is not None:
+        counts = counts.head(limit)
     counts.columns = ["action_raw", "total"]
 
     fig = px.bar(
@@ -142,11 +144,14 @@ def top_actions_chart(df: pd.DataFrame, limit: int = 15) -> go.Figure:
         orientation="h",
         color="total",
         color_continuous_scale="Viridis",
-        title="Quais anotações aparecem com mais frequência?",
-        labels={"total": "Total", "action_raw": "Ação"},
+        title="Quantas falas existem por anotação?",
+        labels={"total": "Total", "action_raw": "Anotação"},
     )
     fig.update_yaxes(autorange="reversed")
-    fig.update_layout(coloraxis_showscale=False)
+    fig.update_layout(
+        coloraxis_showscale=False,
+        height=max(420, 24 * len(counts) + 160),
+    )
     return fig
 
 
@@ -254,10 +259,10 @@ def action_rating_heatmap(df: pd.DataFrame, action_limit: int = 12) -> go.Figure
 def annotation_frequency_chart(
     df: pd.DataFrame,
     dataset_name: str,
-    limit: int = 15,
+    limit: int | None = None,
     include_unknown: bool = True,
 ) -> go.Figure:
-    """Cria barras horizontais com as anotações mais frequentes do dataset."""
+    """Cria barras horizontais com as anotações do dataset."""
     counts = annotation_frequencies(
         df,
         limit=limit,
@@ -274,7 +279,7 @@ def annotation_frequency_chart(
             "total": "Quantidade de falas",
             "action_raw": "Anotação",
         },
-        title=f"Quais anotações aparecem mais em {dataset_name}?",
+        title=f"Quantas falas aparecem em cada anotação de {dataset_name}?",
         custom_data=["percentual"],
     )
     fig.update_traces(
@@ -285,14 +290,17 @@ def annotation_frequency_chart(
         )
     )
     fig.update_yaxes(autorange="reversed")
-    fig.update_layout(showlegend=False)
+    fig.update_layout(
+        showlegend=False,
+        height=max(420, 26 * len(counts) + 160),
+    )
     return fig
 
 
 def annotation_rating_heatmap(
     df: pd.DataFrame,
     dataset_name: str,
-    limit: int = 15,
+    limit: int | None = None,
     include_unknown: bool = True,
 ) -> go.Figure:
     """Cria mapa de calor entre anotações e notas de satisfação."""
@@ -334,6 +342,7 @@ def annotation_rating_heatmap(
         title=f"Como as notas se distribuem dentro de cada anotação de {dataset_name}?",
         xaxis_title="Nota mais frequente",
         yaxis_title="Anotação",
+        height=max(420, 24 * len(percentages.index) + 170),
     )
     fig.update_xaxes(
         tickmode="array",
