@@ -56,19 +56,19 @@ def _metadata_block(row: pd.Series, selected: bool = False) -> str:
         '<span class="rating-chip">Linha selecionada na tabela</span>' if selected else ""
     )
 
-    return f"""
-    <div class="{css_class}">
-        <div>
-            <span class="meta-label">Anotação</span>
-            <code>{action}</code>
-            {selected_label}
-        </div>
-        <div class="turn-meta-row">
-            <span class="meta-label">Notas</span>
-            {_rating_chips(row["satisfaction_scores"])}
-        </div>
-    </div>
-    """
+    return (
+        f'<div class="{css_class}">'
+        "<div>"
+        '<span class="meta-label">Anotação</span>'
+        f"<code>{action}</code>"
+        f"{selected_label}"
+        "</div>"
+        '<div class="turn-meta-row">'
+        '<span class="meta-label">Notas</span>'
+        f'{_rating_chips(row["satisfaction_scores"])}'
+        "</div>"
+        "</div>"
+    )
 
 
 def _selection_label(row: pd.Series) -> str:
