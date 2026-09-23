@@ -6,6 +6,7 @@ import streamlit as st
 from src.charts import annotation_frequency_chart, annotation_rating_heatmap
 from src.config import RATING_LABELS
 from src.content import annotation_narrative, explain_annotation
+from src.display import dataframe_for_display
 from src.loaders import ensure_annotation_columns
 from src.metrics import annotation_frequencies, real_user_turns
 
@@ -20,8 +21,9 @@ def _examples_table(data: pd.DataFrame, annotation: str, rating: int | None) -> 
         examples = examples[examples["satisfaction_mode"] == rating]
 
     examples = examples.sort_values(["dialogue_id", "turn_id"]).head(12)
-    return examples[
-        [
+    return dataframe_for_display(
+        examples,
+        columns=[
             "dataset",
             "dialogue_id",
             "turn_id",
@@ -29,9 +31,8 @@ def _examples_table(data: pd.DataFrame, annotation: str, rating: int | None) -> 
             "action_raw",
             "satisfaction_scores",
             "satisfaction_mode",
-        ]
-    ].rename(
-        columns={
+        ],
+        rename={
             "dataset": "Dataset",
             "dialogue_id": "Diálogo",
             "turn_id": "Posição",
@@ -39,7 +40,7 @@ def _examples_table(data: pd.DataFrame, annotation: str, rating: int | None) -> 
             "action_raw": "Anotação",
             "satisfaction_scores": "Notas",
             "satisfaction_mode": "Nota mais frequente",
-        }
+        },
     )
 
 

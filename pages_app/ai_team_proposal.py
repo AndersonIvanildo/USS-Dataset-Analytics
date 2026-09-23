@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from src.config import RATING_LABELS
+from src.display import dataframe_for_display
 from src.unified_proposal import (
     build_unified_proposal,
     unified_coverage_by_dataset,
@@ -60,7 +61,17 @@ STATUS_COLORS = {
 }
 
 
-@st.cache_data(show_spinner="Montando a proposta unificada do time de IA...")
+def _hash_dataframe_for_cache(df: pd.DataFrame) -> tuple[object, ...]:
+    datasets = tuple(sorted(df["dataset"].dropna().unique())) if "dataset" in df else ()
+    overall_count = int(df["is_overall"].sum()) if "is_overall" in df else 0
+    dialogue_count = int(df[["dataset", "dialogue_id"]].drop_duplicates().shape[0])
+    return (df.shape, tuple(df.columns), datasets, overall_count, dialogue_count)
+
+
+@st.cache_data(
+    show_spinner="Montando a proposta unificada do time de IA...",
+    hash_funcs={pd.DataFrame: _hash_dataframe_for_cache},
+)
 def _build_unified_cached(df: pd.DataFrame) -> pd.DataFrame:
     return build_unified_proposal(df)
 
@@ -72,10 +83,7 @@ def _format_number(value: int | float) -> str:
 
 
 def _display_df(df: pd.DataFrame, columns: list[str] | None = None) -> pd.DataFrame:
-    selected = df.copy() if columns is None else df[columns].copy()
-    for column in selected.columns:
-        selected[column] = selected[column].apply(lambda value: "None" if value is None else value)
-    return selected.rename(columns=DISPLAY_COLUMNS)
+    return dataframe_for_display(df, columns=columns, rename=DISPLAY_COLUMNS)
 
 
 def _schema_table() -> pd.DataFrame:

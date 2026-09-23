@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from src.content import ARTICLE_NOTES, COLUMN_GUIDE, DATASET_GUIDES, RATING_GUIDE
+from src.display import dataframe_for_display
 from src.loaders import ensure_annotation_columns
 
 
@@ -69,7 +70,7 @@ def overall_example(df: pd.DataFrame) -> pd.DataFrame:
         "Interpretação das notas",
         "É OVERALL",
     ]
-    return example
+    return dataframe_for_display(example)
 
 
 def _guide_dataset_callout(dataset_name: str, domain: str) -> None:
