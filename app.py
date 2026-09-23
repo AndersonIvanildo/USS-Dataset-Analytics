@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from pages_app import (
+    ai_team_proposal,
     dataset_annotations,
     dialogue_inspection,
     guide,
@@ -180,6 +181,11 @@ def main() -> None:
             lambda: dataset_annotations.render(df),
             title="Anotações por dataset",
             url_path="anotacoes-dataset",
+        ),
+        st.Page(
+            lambda: ai_team_proposal.render(df),
+            title="Proposta do Time de IA",
+            url_path="proposta-time-ia",
         ),
     ]
     navigation = st.navigation(
