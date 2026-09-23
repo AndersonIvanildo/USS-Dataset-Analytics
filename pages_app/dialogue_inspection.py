@@ -355,10 +355,10 @@ def render(df: pd.DataFrame) -> None:
 
     enable_translation = st.checkbox(
         "Mostrar tradução das falas no ícone ?",
-        value=True,
+        value=False,
         help=(
-            "A tradução é feita somente para o diálogo selecionado e em lote, usando "
-            "deep-translator. O dataset completo não é traduzido."
+            "Ao ativar, o diálogo selecionado será recarregado com traduções nos símbolos ?. "
+            "A tradução é feita somente para esse diálogo, em lote, e pode demorar alguns segundos."
         ),
     )
 
