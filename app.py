@@ -116,6 +116,45 @@ def apply_custom_styles() -> None:
             border-color: rgba(37, 99, 235, 0.55);
             background: rgba(37, 99, 235, 0.10);
         }
+        .translation-help {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.15rem;
+            height: 1.15rem;
+            margin-left: 0.35rem;
+            border-radius: 50%;
+            border: 1px solid rgba(15, 118, 110, 0.58);
+            color: #0f766e;
+            background: rgba(15, 118, 110, 0.08);
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: help;
+        }
+        .translation-help .translation-tooltip {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            z-index: 1000;
+            left: 50%;
+            bottom: 135%;
+            transform: translateX(-50%);
+            width: max-content;
+            max-width: 34rem;
+            padding: 0.75rem 0.85rem;
+            border-radius: 6px;
+            background: #064e3b;
+            color: #ffffff;
+            font-size: 0.88rem;
+            line-height: 1.45;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
+            white-space: normal;
+        }
+        .translation-help:hover .translation-tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
         </style>
         """,
         unsafe_allow_html=True,

@@ -5,6 +5,7 @@ description = "Explorador Streamlit para estudar os datasets USS de satisfação
 readme = "REVIEW.md"
 requires-python = ">=3.11"
 dependencies = [
+    "deep-translator>=1.11.4",
     "pandas>=2.2.0",
     "plotly>=5.22.0",
     "pyarrow>=15.0.0",

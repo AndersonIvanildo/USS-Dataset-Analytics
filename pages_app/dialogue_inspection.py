@@ -9,6 +9,7 @@ import streamlit as st
 from src.charts import satisfaction_timeline_chart
 from src.config import RATING_LABELS
 from src.loaders import ensure_annotation_columns
+from src.translation import DialogueTranslationError, translate_dialogue_texts
 
 
 TABLE_COLUMNS = [
@@ -78,6 +79,67 @@ def _selection_label(row: pd.Series) -> str:
         f"{row['dataset']} · diálogo {row['dialogue_id']} · "
         f"linha {row['turn_id']} · {role} · {text}"
     )
+
+
+def _dialogue_row_label(row: pd.Series) -> str:
+    role = "OVERALL" if row["is_overall"] else row["role"]
+    return f"linha {row['turn_id']} · {role} · {_shorten_text(row['text'], 70)}"
+
+
+def _message_with_translation(text: object, translation: str | None) -> str:
+    original = escape(str(text))
+    if not translation:
+        return original
+    translated = escape(translation)
+    return (
+        f"{original}"
+        '<span class="translation-help">?'
+        f'<span class="translation-tooltip">{translated}</span>'
+        "</span>"
+    )
+
+
+@st.cache_data(show_spinner="Traduzindo falas do diálogo selecionado...")
+def _translate_selected_dialogue(texts: tuple[str, ...]) -> dict[str, str]:
+    return translate_dialogue_texts(texts)
+
+
+def _direct_dialogue_selector(df: pd.DataFrame) -> pd.Series | None:
+    st.markdown("**Abrir conversa por dataset e ID**")
+    st.markdown(
+        """
+        Use esta seleção quando você já souber qual conversa quer abrir. O identificador
+        continua sendo o par dataset e ID original do diálogo, porque os IDs se repetem
+        entre bases diferentes.
+        """
+    )
+
+    left, middle, right = st.columns([1, 1, 1.4])
+    with left:
+        datasets = sorted(df["dataset"].unique())
+        dataset = st.selectbox("Dataset do diálogo", datasets, key="direct_dialogue_dataset")
+
+    dataset_df = df[df["dataset"] == dataset].copy()
+    dialogue_ids = sorted(dataset_df["dialogue_id"].unique().tolist())
+    with middle:
+        dialogue_id = st.selectbox(
+            "ID do diálogo",
+            dialogue_ids,
+            index=0,
+            key="direct_dialogue_id",
+        )
+
+    dialogue_df = dataset_df[dataset_df["dialogue_id"] == dialogue_id].sort_values("turn_id")
+    with right:
+        turn_options = dialogue_df.index.tolist()
+        selected_index = st.selectbox(
+            "Linha destacada",
+            turn_options,
+            format_func=lambda index: _dialogue_row_label(dialogue_df.loc[index]),
+            key="direct_dialogue_turn",
+        )
+
+    return dialogue_df.loc[selected_index]
 
 
 def _filter_table(df: pd.DataFrame) -> pd.DataFrame:
@@ -194,7 +256,11 @@ def _selected_row(page_df: pd.DataFrame) -> pd.Series | None:
     return page_df.loc[selected_index]
 
 
-def _render_dialogue(df: pd.DataFrame, selected_row: pd.Series) -> None:
+def _render_dialogue(
+    df: pd.DataFrame,
+    selected_row: pd.Series,
+    enable_translation: bool = True,
+) -> None:
     dataset = selected_row["dataset"]
     dialogue_id = selected_row["dialogue_id"]
     selected_turn_id = selected_row["turn_id"]
@@ -207,6 +273,21 @@ def _render_dialogue(df: pd.DataFrame, selected_row: pd.Series) -> None:
     dialogue_df = df[
         (df["dataset"] == dataset) & (df["dialogue_id"] == dialogue_id)
     ].sort_values("turn_id")
+
+    translations: dict[str, str] = {}
+    if enable_translation:
+        texts_to_translate = tuple(
+            str(text)
+            for text in dialogue_df.loc[~dialogue_df["is_overall"], "text"].dropna().tolist()
+            if str(text).strip()
+        )
+        try:
+            translations = _translate_selected_dialogue(texts_to_translate)
+        except DialogueTranslationError as error:
+            st.warning(
+                "Não foi possível carregar as traduções deste diálogo agora. "
+                "O texto original continua disponível. Detalhe: " + str(error)
+            )
 
     st.plotly_chart(
         satisfaction_timeline_chart(dialogue_df),
@@ -224,14 +305,20 @@ def _render_dialogue(df: pd.DataFrame, selected_row: pd.Series) -> None:
 
         if row["role"] == "USER":
             with st.chat_message("user"):
-                st.markdown(row["text"])
+                st.markdown(
+                    _message_with_translation(row["text"], translations.get(str(row["text"]))),
+                    unsafe_allow_html=True,
+                )
                 st.markdown(
                     _metadata_block(row, selected=selected),
                     unsafe_allow_html=True,
                 )
         else:
             with st.chat_message("assistant"):
-                st.markdown(row["text"])
+                st.markdown(
+                    _message_with_translation(row["text"], translations.get(str(row["text"]))),
+                    unsafe_allow_html=True,
+                )
                 st.markdown(
                     _metadata_block(row, selected=selected),
                     unsafe_allow_html=True,
@@ -252,7 +339,28 @@ def render(df: pd.DataFrame) -> None:
 
     table_df = _filter_table(df)
     page_df = _paginated_table(table_df)
-    selected_row = _selected_row(page_df)
+
+    st.markdown("---")
+    st.markdown("**Escolher conversa para inspecionar**")
+    selection_mode = st.radio(
+        "Modo de seleção",
+        ["Selecionar por dataset e ID", "Usar uma linha desta página"],
+        horizontal=True,
+    )
+
+    if selection_mode == "Selecionar por dataset e ID":
+        selected_row = _direct_dialogue_selector(df)
+    else:
+        selected_row = _selected_row(page_df)
+
+    enable_translation = st.checkbox(
+        "Mostrar tradução das falas no ícone ?",
+        value=True,
+        help=(
+            "A tradução é feita somente para o diálogo selecionado e em lote, usando "
+            "deep-translator. O dataset completo não é traduzido."
+        ),
+    )
 
     if selected_row is not None:
-        _render_dialogue(df, selected_row)
+        _render_dialogue(df, selected_row, enable_translation=enable_translation)

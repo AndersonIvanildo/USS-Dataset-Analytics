@@ -10,6 +10,8 @@ attrs==26.1.0
     # via
     #   jsonschema
     #   referencing
+beautifulsoup4==4.15.0
+    # via deep-translator
 certifi==2026.7.22
     # via requests
 charset-normalizer==3.5.1
@@ -18,6 +20,8 @@ click==8.5.0
     # via
     #   streamlit
     #   uvicorn
+deep-translator==1.11.4
+    # via uss-dataset-explorer
 h11==0.16.0
     # via uvicorn
 httptools==0.8.0
@@ -83,6 +87,7 @@ referencing==0.37.0
     #   jsonschema-specifications
 requests==2.34.2
     # via
+    #   deep-translator
     #   streamlit
     #   uss-dataset-explorer
 rpds-py==2026.6.3
@@ -91,6 +96,8 @@ rpds-py==2026.6.3
     #   referencing
 six==1.17.0
     # via python-dateutil
+soupsieve==2.9.2
+    # via beautifulsoup4
 starlette==1.6.0
     # via streamlit
 streamlit==1.64.0
@@ -101,6 +108,7 @@ typing-extensions==4.16.0
     # via
     #   altair
     #   anyio
+    #   beautifulsoup4
     #   referencing
     #   starlette
     #   streamlit
